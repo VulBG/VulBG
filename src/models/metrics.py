@@ -44,6 +44,8 @@ def get_accuracy_with_new_label(labels, prediction):
     labels_new = [label_dict_out[label_change[label_dict_in[i]]] for i in labels]
     return accuracy , labels_new
 
+
+
 def get_scores(labels, predictions):
     accuracy = get_accuracy(labels, predictions)
     precision, recall, f_score, _ = sklearn.metrics.precision_recall_fscore_support(labels, predictions,average='binary', pos_label=1)

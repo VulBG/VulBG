@@ -208,7 +208,7 @@ def train_loop(dataloader, model, loss_fn, optimizer, verbose = 0):
     # print(all_labs)
     # print(all_preds)
   
-    scores = get_MCM_score(all_labs, all_preds)
+    scores = get_scores(all_labs, all_preds)
     if verbose:
         print(f'Train: {(100*scores[0]):>0.2f}%, {(100*scores[1]):>0.2f}%, {(100*scores[2]):>0.2f}%, {(100*scores[3]):>0.2f}%')
 
@@ -245,7 +245,7 @@ def test_loop(dataloader, nn_model, loss_fn, use_pooler = True, verbose = 0, is_
 
     test_loss /= num_batchs
     
-    scores = get_MCM_score(all_labs, all_preds)
+    scores = get_scores(all_labs, all_preds)
 #     print(scores)
     if verbose:
         if is_valid:
