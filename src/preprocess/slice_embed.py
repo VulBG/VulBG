@@ -27,7 +27,7 @@ tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base")
 model = RobertaModel.from_pretrained("microsoft/codebert-base")
 model = model.to(device)
 
-def embed_one_batch(codes, cpu=False, max_length = 512):
+def embed_one_batch(codes, cpu=False, max_length = 256):
     inputs = tokenizer(
         codes, padding=True, truncation=True, return_tensors="pt", max_length=max_length
     )
@@ -40,35 +40,34 @@ def embed_one_batch(codes, cpu=False, max_length = 512):
 def mycollate_fn_for_embed(data):
     files = []
     codes = []
-    label_data = []
     for i in data:
-        label_data.append(i["vul"])
-        codes.append(i["code"])
+        codes.append(i["s"])
         files.append(i["file"])
-    label_data = torch.tensor(label_data)
     length = len(files)
-    return codes, label_data, files, length
+    return codes, files, length
 
 
 def embed_all(data, all_dataloader, batch_size):
     all_embeds = {}
+    for item in data:
+        all_embeds[item["file"]] = []
     torch.cuda.empty_cache()
     gc.collect()
-    for i, codes_with_labels in enumerate(all_dataloader):    
+    for i, codes in enumerate(all_dataloader):    
         print(i)
-        codes, labels, files, length = codes_with_labels
+        codes, files, length = codes
         output = embed_one_batch(codes, False)[1]
         gc.collect()
         output = output.cpu().detach().numpy()
         for j in range(length):
-            all_embeds[files[j]] = output[j]
+            all_embeds[files[j]].append(output[j])
     return all_embeds
             
 
 
 if __name__ == "__main__":
     dataset = sys.argv[1]
-    max_length = sys.argv[2]
+    # max_length = sys.argv[2]
 
     if dataset == "reveal":
         path = "/root/data/VulBG/dataset/devign_dataset.pkl"
@@ -78,13 +77,20 @@ if __name__ == "__main__":
         path = dataset
 
     dataset = pickle.load(open(path, "rb"))
-    batch_size = 8
-    dataloader = DataLoader(dataset, batch_size = batch_size, shuffle = False, collate_fn=mycollate_fn_for_embed)
 
+    slices_dataset = []
+    for i in dataset:
+        for s in i["slices"][:20]:
+            slices_dataset.append({"file": i["file"], "s": s})
+
+    batch_size = 12
+    dataloader = DataLoader(slices_dataset, batch_size = batch_size, shuffle = False, collate_fn=mycollate_fn_for_embed)
+
+    print(len(slices_dataset))
     embeds = embed_all(dataset, dataloader, batch_size)
 
     for i in dataset:
-        i["codebert"] = embeds[i["file"]]
+        i["slices_vec"] = embeds[i["file"]]
         
     f = open(path, "wb")
     pickle.dump(dataset, f)
